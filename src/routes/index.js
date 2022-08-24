@@ -7,5 +7,4 @@ const app = Router();
 
 app.use('/pipedrive', pipedrive);
 
-
 export default app;

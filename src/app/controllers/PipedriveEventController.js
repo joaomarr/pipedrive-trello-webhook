@@ -1,4 +1,7 @@
 import GetDeal from '../services/GetDeal';
+import GetDealProducts from '../services/GetDealProducts';
+import assertInstallationDeal from '../helpers/assertInstallationDeal'
+import formatDeal from '../helpers/formatDeal'
 
 class PipedriveEventController {
   async store(req, res) {
@@ -9,10 +12,21 @@ class PipedriveEventController {
         if (current.status === 'won') {
           const getDeal = new GetDeal();
 
-          const deal = await updateDealFieldsName.run({
-            data: await getDeal.run({ id: current.id }),
+          const deal = await getDeal.run({
+            id: current.id
           });
+
+          if (assertInstallationDeal(deal) === true) {
+            const getDealProducts = new GetDealProducts();
+            const products = await getDealProducts.run({ id: current.id });
+
+            const formattedDeal = formatDeal(deal, products)
+            return res.json({
+              formattedDeal
+            })
+          }
         }
+
         break;
       }
     }
