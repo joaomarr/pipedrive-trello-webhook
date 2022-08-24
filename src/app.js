@@ -20,17 +20,5 @@ app.use(routeAliases);
 app.use('/v1/', routes);
 
 app.use(errors());
-app.use((err, _, res, next) => {
-  if (isBoom(err)) {
-    const { statusCode, payload } = err.output;
-
-    return res.status(statusCode).json({
-      ...payload,
-      ...err.data,
-    });
-  }
-
-  return next(err);
-});
 
 export default app;

@@ -1,5 +1,6 @@
 import GetDeal from '../services/GetDeal';
 import GetDealProducts from '../services/GetDealProducts';
+import PostTrelloCard from '../services/PostTrelloCard';
 import assertInstallationDeal from '../helpers/assertInstallationDeal'
 import formatDeal from '../helpers/formatDeal'
 
@@ -21,8 +22,12 @@ class PipedriveEventController {
             const products = await getDealProducts.run({ id: current.id });
 
             const formattedDeal = formatDeal(deal, products)
+
+            const postTrelloCard = new PostTrelloCard();
+            const trelloCard = await postTrelloCard.run(formattedDeal);
+
             return res.json({
-              formattedDeal
+              trelloCard
             })
           }
         }
