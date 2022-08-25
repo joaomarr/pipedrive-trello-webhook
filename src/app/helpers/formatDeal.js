@@ -9,7 +9,15 @@ export default (deal, products) => {
     const personEmail = person['email'][0]['value']
     const personPhone = person['phone'][0]['value']
 
-    const description = `-Contrato: ${contractId ? contractId : ''} -Cliente: ${personName ? personName : ''} -Email: ${personEmail ? personEmail : ''} -Telefone: ${personPhone ? personPhone : ''} -Local de instalação: _**SERVIÇOS VENDIDOS:**_ ${serviceDesc ? serviceDesc : ''}  _**INSTALAÇÃO (EQUIPAMENTO/SERVIÇOS):**_ ${products.map((product) => { return `- ${product.description ? product.description : 'Não definido'}` })}`
+    const description = `-Contrato: ${contractId ? contractId : ''}
+    -Cliente: ${personName ? personName : ''}
+    -Email: ${personEmail ? personEmail : ''}
+    -Telefone: ${personPhone ? personPhone : ''}
+    -Local de instalação:
+    _**SERVIÇOS VENDIDOS:**_ 
+    ${serviceDesc ? serviceDesc : ''}
+    _**INSTALAÇÃO (EQUIPAMENTO/SERVIÇOS):**_
+    ${products.map((product) => { return `- ${product.description ? product.description + " \n" : 'Não definido'}` })}`
 
     formattedDeal.name = deal.title ? deal.title : ''
     formattedDeal.desc = description
