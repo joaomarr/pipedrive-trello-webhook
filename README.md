@@ -9,25 +9,20 @@
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com)<br>
 [![Run in Insomnia}](https://insomnia.rest/images/run.svg)](https://insomnia.rest/run/?label=Pipedeals&uri=https%3A%2F%2Fraw.githubusercontent.com%2FDiegoVictor%2Fpipedeals%2Fmain%2FInsomnia_2021-09-06.json)
 
-The main purpose of Pipedeals is listen to [Pipedrive](https://www.pipedrive.com) deal's `won` update event, prepare buy order data, save it on a database and finally send it to [Bling](https://www.bling.com.br)'s API. Also expose two resources, `opportunities` that are buy orders sent to Bling and `reports` that aggregates opportunities by day and amount (sum of products' prices in that day).
+The main purpose of this webhook is to listen to [Pipedrive](https://www.pipedrive.com) deal's `won` update event, and if it is from a certain type of deal, send it as a card to [Trello](https://www.trello.com) with custom fields. 
 
 # Table of Contents
 * [Installing](#installing)
   * [Configuring](#configuring)
-    * [MongoDB](#mongodb)
     * [.env](#env)
     * [Pipedrive](#pipedrive)
       * [Webhook](#webhook)
       * [Custom Fields](#custom-fields)
       * [Product](#product)
-    * [Bling's API Key](#blings-api-key)
-      * [Permissions](#permissions)
+    * [Trello](#trello-api-key)
 * [Usage](#usage)
   * [Error Handling](#error-handling)
     * [Errors Reference](#errors-reference)
-  * [Pagination](#pagination)
-    * [Link Header](#link-header)
-    * [X-Total-Count](#x-total-count)
   * [Bearer Token](#bearer-token)
   * [Versioning](#versioning)
   * [Routes](#routes)
@@ -47,32 +42,25 @@ $ npm install
 > Was installed and configured the [`eslint`](https://eslint.org) and [`prettier`](https://prettier.io) to keep the code clean and patterned.
 
 ## Configuring
-The application uses just one database: [MongoDB](https://www.mongodb.com). For the fastest setup is recommended to use [docker-compose](https://docs.docker.com/compose/), you just need to up all services:
+For the fastest setup is recommended to use [docker-compose](https://docs.docker.com/compose/), you just need to up all services:
 ```
 $ docker-compose up -d
 ```
 
-### MongoDB
-Store opportunities sent to Bling, reports and the users utilized by application. If for any reason you would like to create a MongoDB container instead of use `docker-compose`, you can do it by running the following command:
-```
-$ docker run --name pipedeals-mongo -d -p 27017:27017 mongo
-```
-
 ### .env
-In this file you may configure your MongoDB and Redis database connection, JWT settings, the environment, app's port, url to documentation (this will be returned with error responses, see [error section](#error-handling)) and Pipedrive and Bling's keys. Rename the `.env.example` in the root directory to `.env` then just update with your settings.
+In this file you may configure your JWT settings, the environment, app's port, url to documentation (this will be returned with error responses, see [error section](#error-handling)) and Pipedrive and Trello's keys.
 
 |key|description|default
 |---|---|---
 |APP_PORT|Port number where the app will run.|`3333`
 |NODE_ENV|App environment.|`development`
-|JWT_SECRET|An alphanumeric random string. Used to create signed tokens.| -
-|JWT_EXPIRATION_TIME|How long time will be the token valid. See [jsonwebtoken](https://github.com/auth0/node-jsonwebtoken#usage) repo for more information.|`7d`
-|MONGO_URL|MongoDB's server url.|`mongodb://mongo:27017/pipedeals`
 |PIPEDRIVE_API_TOKEN|Pipedrive API's token. See [How to find the API token](https://pipedrive.readme.io/docs/how-to-find-the-api-token) for more information.| -
 |PIPEDRIVE_DOMAIN_NAME|Pipedrive domain name (company name), see [How to get the company domain](https://pipedrive.readme.io/docs/how-to-get-the-company-domain).| -
 |PIPEDRIVE_USER and PIPEDRIVE_PWD|Basic auth's user and password (respectively). Used to ensure that the deal's event is coming from Pipedrive webhook, see [Webhook](#webhook) for more information about it.| -
-|BLING_API_KEY|Bling's api key. See [Bling's API key](#blings-api-key) section.| -
-|DOCS_URL|An url to docs where users can find more information about the app's internal code errors.|`https://github.com/DiegoVictor/pipedeals#errors-reference`
+|TRELLO_API_KEY|Trello's api key. See [Trello's api key](#trello-api-key) section.| -
+|TRELLO_API_TOKEN|Trello's api token. See [Trello's api token](#trello-api-token) section.| -
+|TRELLO_LIST_ID|Trello's list id. -
+|TRELLO_BOARD_ID|Trello's board id. -
 
 ### Pipedrive
 Instructions to configure the Pipedrive's webhook, custom fields and products.
@@ -87,56 +75,17 @@ https://<your-domain>/v1/pipedrive/events
 ```
 > If you are running the application local I recommend you to use [ngrok](https://ngrok.com) to export a url to access the application. (e.g. `https://25752eff.ngrok.io/v1/pipedrive/events`)
 
-![webhook](https://raw.githubusercontent.com/DiegoVictor/pipedeals/main/screenshots/webhook.png)
+![webhook](https://raw.githubusercontent.com/joaomarr/pipedrive-trello-webhook/main/screenshots/webhook.png)
 
-#### Custom Fields
-Bling make some fields mandatory, they are: [`Payment Method`](#payment-method) and [`Supplier`](#supplier), this application makes [`Parcels`](#parcels) mandatory too. To create custom fields to deal on Pipedrive see [Adding Custom Fields](https://support.pipedrive.com/hc/en-us/articles/207228075-Custom-Fields#C1).
+### Trello's API Key
+To get a Trello's API key, go to trello app-key:
+* [App-key](https://trello.com/app-key)
+![Trello key](https://raw.githubusercontent.com/joaomarr/pipedrive-trello-webhook/main/screenshots/trello_api_key.png)
 
-![custom fields](https://raw.githubusercontent.com/DiegoVictor/pipedeals/main/screenshots/custom_fields.png)
+Then, click on `gerar token` or `generate token`.
 
-##### Parcels
-Just create a field named Parcels, must be a number.
+![Trello token](https://raw.githubusercontent.com/joaomarr/pipedrive-trello-webhook/main/screenshots/trello_token.png)
 
-![parcels](https://raw.githubusercontent.com/DiegoVictor/pipedeals/main/screenshots/parcels.png)
-
-##### Supplier
-Supplier, must be free text field.
-
-![supplier](https://raw.githubusercontent.com/DiegoVictor/pipedeals/main/screenshots/supplier.png)
-
-##### Payment Method
-Payment Method, must be unique option field.
-
-![payment method](https://raw.githubusercontent.com/DiegoVictor/pipedeals/main/screenshots/payment_method.png)
-> Payments methods that not exists in Bling will be created before the opportunity be sent to it.
-
-#### Product
-Also you need to create a product and attach to deal, fill only the mandatory fields is enough (`Product name` and `Unit price`). For more information see [Adding New Products](https://support.pipedrive.com/hc/en-us/articles/206759569-Products#C2).
-
-![create product](https://raw.githubusercontent.com/DiegoVictor/pipedeals/main/screenshots/create_product.png)
-
-Remember to link the product to deals, see how to do it in this article [How can I link products to a deal?](https://support.pipedrive.com/hc/en-us/articles/115001109169-How-can-I-link-products-to-a-deal-).
-
-![add deal product](https://raw.githubusercontent.com/DiegoVictor/pipedeals/main/screenshots/add_deal_product.png)
-
-### Bling's API Key
-To get a Bling's API key, go to user list:
-* [Users](https://www.bling.com.br/b/usuarios.php#list)
-
-Then create a new user, select `USUÁRIO API`, copy the `API key` (maybe be necessary click on `GERAR`), [configure the permissions](#permissions), save the user, paste the `API key` in the `BLING_API_KEY` key in the `.env` file.
-
-![Bling user](https://raw.githubusercontent.com/DiegoVictor/pipedeals/main/screenshots/bling_user.png)
-
-#### Permissions
-The following permissions are necessary to the API user:
-
-|permissions|menu|description
-|---|---|---
-|`Contas Contábeis`, `Notas Fiscais`, `NFCe` and `Pedidos de Venda`|Vendas|Enable just one is enough. Allow to get lists and create payment methods.
-|`Pedidos de Compra`|Suprimentos|Allow to create new buy orders.
-
-![permissions buy order](https://raw.githubusercontent.com/DiegoVictor/pipedeals/main/screenshots/permissions_buy_order.png)<br>
-![permissions sales](https://raw.githubusercontent.com/DiegoVictor/pipedeals/main/screenshots/permissions_sales.png)
 
 # Usage
 To start up the app run:
@@ -181,24 +130,6 @@ Instead of only throw a simple message and HTTP Status Code this API return frie
 |740|Missing authorization token|The Bearer Token was not sent.
 |741|You are not authorized!|The Bearer Token provided is invalid or expired.
 
-## Pagination
-All the routes with pagination returns 10 records per page, to navigate to other pages just send the `page` query parameter with the number of the page.
-
-* To get the third page of opportunities:
-```
-GET http://localhost:3333/v1/opportunities?page=3
-```
-
-### Link Header
-Also in the headers of every route with pagination the `Link` header is returned with links to `first`, `last`, `next` and `prev` (previous) page.
-```
-<http://localhost:3333/v1/opportunities?page=7>; rel="last",
-<http://localhost:3333/v1/opportunities?page=4>; rel="next",
-<http://localhost:3333/v1/opportunities?page=1>; rel="first",
-<http://localhost:3333/v1/opportunities?page=2>; rel="prev"
-```
-> See more about this header in this MDN doc: [Link - HTTP](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Link).
-
 ### X-Total-Count
 Another header returned in routes with pagination, this bring the total records amount.
 
@@ -206,49 +137,24 @@ Another header returned in routes with pagination, this bring the total records 
 All reports and oppotunities routes expect a Bearer Token in an `Authorization` header.
 > You can see these routes in the [routes](#routes) section.
 ```
-GET http://localhost:3333/v1/reports?page=1 Authorization: Bearer <token>
+GET http://localhost:3333/v1/pipedrive/events Authorization: Bearer <token>
 ```
 > To achieve this token you just need authenticate through the `/sessions` route and it will return the `token` key with a valid Bearer Token.
 
 ## Versioning
 A simple versioning was made. Just remember to set after the `host` the `/v1/` string to your requests.
 ```
-GET http://localhost:3333/v1/reports
+GET http://localhost:3333/v1/pipedrive
 ```
 
 ## Routes
 |route|HTTP Method|pagination|params|description|auth method
 |:---|:---:|:---:|:---:|:---|:---:
-|`/sessions`|POST|:x:|Body with user's `email` and `password`.|Authenticates user, return a Bearer Token and user's id and email.|:x:
-|`/users`|POST|:x:|Body with user's `email` and `password`.|Create new users.|:x:
 |`/pipedrive/events`|POST|:x:|Body with event's `event`, `current.id` and `current.status`.|Receive Piedrive deal's won event.|Basic
-|`/reports`|GET|:heavy_check_mark:|`page` query parameter.|List reports.|Bearer
-|`/reports/:id`|GET|:x:|`:id` of the report.|Return one report.|Bearer
-|`/reports/:id/opportunities`|GET|:heavy_check_mark:|`:id` of the report and `page` query parameter.|List report's opportunities.|Bearer
-|`/reports/:report_id/opportunities/:id`|GET|:x:|`:report_id` of the report and `:id` of the opportunity.|Return one report's opportunity.|Bearer
 
 > Routes with `Bearer` as auth method expect an `Authorization` header. See [Bearer Token](#bearer-token) section for more information. `Basic` authentication is a base64 encoding of `PIPEDRIVE_USER` and `PIPEDRIVE_PWD` joined by a `:`, but you should not make manual requests to this endpoint (this will be responsability of the Pipedrive's [webhook](#webhook)).
 
 ### Requests
-* `POST /session`
-
-Request body:
-```json
-{
-  "email": "diegovictorgonzaga@gmail.com",
-  "password": "123456"
-}
-```
-
-* `POST /users`
-
-Request body:
-```json
-{
-  "email": "diegovictorgonzaga@gmail.com",
-  "password": "123456"
-}
-```
 
 * `POST /pipedrive/events`
 
